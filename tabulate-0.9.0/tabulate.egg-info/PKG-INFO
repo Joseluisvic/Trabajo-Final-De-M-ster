@@ -16,8 +16,9 @@ Classifier: Programming Language :: Python :: 3.10
 Classifier: Topic :: Software Development :: Libraries
 Requires-Python: >=3.7
 Description-Content-Type: text/markdown
-Provides-Extra: widechars
 License-File: LICENSE
+Provides-Extra: widechars
+Requires-Dist: wcwidth; extra == "widechars"
 
 python-tabulate
 ===============

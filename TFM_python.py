@@ -4,6 +4,13 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from tabulate import tabulate
 import numpy as np
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+import sklearn 
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import roc_curve, roc_auc_score
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
 
 #Cargo el archivo
 data = pd.read_csv('data.csv')
@@ -199,4 +206,154 @@ plt.title('Boxplot del Precio por Barrio')
 plt.xlabel('Barrio')
 plt.ylabel('Precio')
 plt.savefig('bp_precio_barrio_4.png')
+plt.show()
+
+#AJUSTE MODELO LOGIT
+# Crear variable binaria de precio alto
+data_filtered['precio_alto'] = (data_filtered['price'] > data_filtered['price'].median()).astype(int)
+
+# Convertir variables categóricas a tipo 'category'
+data_filtered['property_type'] = data_filtered['property_type'].astype('category')
+data_filtered['room_type'] = data_filtered['room_type'].astype('category')
+data_filtered['neighbourhood_cleansed'] = data_filtered['neighbourhood_cleansed'].astype('category')
+
+# Fórmula del modelo
+formula = 'precio_alto ~ accommodates + antiguedad + host_response_rate + host_response_time + bathrooms + beds + host_is_superhost + host_listings_count + host_has_profile_pic + host_identity_verified + C(property_type) + C(room_type) + minimum_nights + maximum_nights + C(neighbourhood_cleansed)'
+
+# Modelo Logit
+modelo_logit = smf.glm(formula=formula, data=data_filtered, family=sm.families.Binomial(link=sm.families.links.logit())).fit()
+print(modelo_logit)
+# Guardar el resumen del modelo en un archivo de texto
+with open('logit_model_summary.txt', 'w') as f:
+    f.write(modelo_logit.summary().as_text())
+# Mostrar el resumen del modelo logit
+print(modelo_logit.summary())
+
+# Calcular las probabilidades predichas
+data_filtered['pred_prob'] = modelo_logit.predict()
+
+# Obtener las verdaderas etiquetas y las probabilidades predichas
+y_true = data_filtered['precio_alto']
+y_pred_prob = data_filtered['pred_prob']
+
+# Calcular la curva ROC
+fpr, tpr, thresholds = roc_curve(y_true, y_pred_prob)
+
+# Calcular el área bajo la curva ROC
+roc_auc = roc_auc_score(y_true, y_pred_prob)
+
+# Graficar la curva ROC
+plt.figure(figsize=(10, 6))
+plt.plot(fpr, tpr, color='blue', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+plt.plot([0, 1], [0, 1], color='gray', linestyle='--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver Operating Characteristic (ROC)')
+plt.legend(loc='lower right')
+plt.grid(True)
+plt.savefig('curva_ROC.png')
+plt.show()
+
+#Ahora pasaré a hacer un análisis de segmentación del mercado. Para ello empezaré cogiendo las variables significatiavs del modelo logit 
+#calculado anteriormente y haciendo un análisis clúster con ellas.
+
+# Añadir predicción al DataFrame
+data_filtered.loc[:, 'pred_prob'] = modelo_logit.predict()
+
+# Seleccionar las variables significativas y normalizarlas
+significant_vars = ['accommodates', 'host_response_time', 'bathrooms', 'beds', 'host_listings_count',
+                    'host_has_profile_pic', 'minimum_nights', 'maximum_nights']
+
+# Crear variables dummy para 'property_type' y 'neighbourhood_cleansed'
+data_filtered = pd.get_dummies(data_filtered, columns=['property_type', 'neighbourhood_cleansed'], drop_first=True)
+
+# Añadir las dummies significativas a la lista de variables
+dummy_vars = [col for col in data_filtered.columns if 'property_type_' in col or 'neighbourhood_cleansed_' in col]
+significant_vars.extend(dummy_vars)
+
+# Filtrar el DataFrame con las variables significativas
+datos_segmentacion = data_filtered[['price'] + significant_vars].dropna()
+
+# Normalización de las variables
+scaler = StandardScaler()
+datos_normalizados = scaler.fit_transform(datos_segmentacion)
+
+# Realizar PCA
+pca = PCA()
+pca_resultado = pca.fit_transform(datos_normalizados)
+# Gráfica de Varianza Explicada Acumulada (Scree Plot)
+# Esta gráfica muestra la proporción de la varianza total explicada por cada componente principal. En el eje X se representan los componentes principales, y en el eje Y, la varianza explicada acumulada.
+# Creciente: La línea creciente indica que a medida que se agregan más componentes, se explica más varianza de los datos.
+# Por ejemplo, si la línea se estabiliza después de 4 componentes, significa que los primeros 4 componentes explican la mayor parte de la varianza, y añadir más componentes no incrementará significativamente la varianza explicada.
+
+# Visualizar la varianza explicada por cada componente
+plt.figure()
+plt.plot(np.cumsum(pca.explained_variance_ratio_))
+plt.xlabel('Número de Componentes')
+plt.ylabel('Varianza Explicada Acumulada')
+plt.title('Scree Plot')
+plt.grid()
+plt.savefig("Var_exp.png")
+plt.show()
+
+# Gráfica del Método del Codo
+# Esta gráfica ayuda a determinar el número óptimo de clusters (grupos) para un algoritmo de clustering (K-means en este caso).
+# En el eje X se representan los diferentes números de clusters, y en el eje Y, la suma de las distancias cuadradas dentro de los clusters (Within-Cluster Sum of Squares, WSS).
+# Decreciente: La línea decreciente muestra que a medida que se aumenta el número de clusters, la WSS disminuye.
+# El "codo" de la gráfica es el punto donde la tasa de disminución se hace menos pronunciada.
+# Este punto indica el número óptimo de clusters, ya que más clusters no aportan una mejora significativa en la compactación de los grupos.
+
+# Determinar el número óptimo de clusters utilizando el método del codo
+wss = []
+for i in range(1, 16):
+    kmeans = KMeans(n_clusters=i, random_state=123)
+    kmeans.fit(datos_normalizados)
+    wss.append(kmeans.inertia_)
+
+plt.figure()
+plt.plot(range(1, 16), wss, marker='o')
+plt.xlabel('Número de Clusters')
+plt.ylabel('Within groups sum of squares')
+plt.title('Método del Codo')
+plt.grid()
+plt.savefig("codo.png")
+plt.show()
+
+# Realizar K-means clustering con el número óptimo de clusters (e.g., 4 clusters)
+optimal_clusters = 4
+kmeans_resultado = KMeans(n_clusters=optimal_clusters, random_state=123, n_init=25).fit(datos_normalizados)
+
+# Añadir los clusters a los datos originales
+data_filtered.loc[:, 'cluster'] = kmeans_resultado.labels_.astype(str)
+
+# Realizar K-means clustering con el número óptimo de clusters (e.g., 4 clusters)
+kmeans = KMeans(n_clusters=4, n_init=25, random_state=123)
+kmeans.fit(datos_normalizados)
+clusters = kmeans.labels_
+# Mostrar las primeras filas del DataFrame con el nuevo cluster
+print(data_filtered.head())
+
+# Añadir los clusters a los datos originales
+data_filtered['cluster'] = clusters
+
+#PCA CON DOS COMPONENTES PRINCIPALES
+# Realizar PCA
+pca = PCA(n_components=2)
+datos_pca = pca.fit_transform(datos_normalizados)
+
+# Crear un DataFrame con los resultados de PCA y los clusters
+pca_df = pd.DataFrame(data=datos_pca, columns=['PCA1', 'PCA2'])
+pca_df['cluster'] = clusters
+
+# Gráfico de dispersión de los datos según las componentes principales
+plt.figure(figsize=(10, 7))
+scatter = plt.scatter(pca_df['PCA1'], pca_df['PCA2'], c=pca_df['cluster'], cmap='viridis', alpha=0.6)
+plt.xlabel('Componente Principal 1')
+plt.ylabel('Componente Principal 2')
+plt.title('Datos según Componentes Principales')
+plt.colorbar(scatter, label='Cluster')
+plt.grid()
+plt.savefig("Componentes principales.png")
 plt.show()

@@ -1,0 +1,58 @@
+
+Call:
+glm(formula = formula_reg, data = data)
+
+Coefficients:
+                                            Estimate Std. Error t value Pr(>|t|)  
+(Intercept)                                403.10103  321.12251   1.255   0.2094  
+accommodates                                12.65725   10.51519   1.204   0.2287  
+antiguedad                                  -0.02202    0.01139  -1.933   0.0533 .
+host_response_rate                         -72.37800  127.51957  -0.568   0.5703  
+host_response_time                          60.78154   30.06679   2.022   0.0433 *
+bathrooms                                   28.24449   24.01612   1.176   0.2396  
+beds                                         4.73297   11.04023   0.429   0.6682  
+host_is_superhost                          -45.94772   27.32377  -1.682   0.0927 .
+host_listings_count                          0.06097    0.12605   0.484   0.6286  
+host_has_profile_pic                        44.70163  102.90669   0.434   0.6640  
+host_identity_verified                      59.67006   94.11925   0.634   0.5261  
+property_type                                4.78664    2.00113   2.392   0.0168 *
+room_type                                  -84.92904   42.93775  -1.978   0.0480 *
+minimum_nights                              -2.03512    1.95827  -1.039   0.2987  
+maximum_nights                              -0.03814    0.02806  -1.359   0.1742  
+neighbourhood_cleansedCampanillas          -32.54578  188.43238  -0.173   0.8629  
+neighbourhood_cleansedCarretera de Cadiz   134.20566   80.88567   1.659   0.0971 .
+neighbourhood_cleansedCentro                53.72939   72.42871   0.742   0.4582  
+neighbourhood_cleansedChurriana              7.87333  126.01846   0.062   0.9502  
+neighbourhood_cleansedCiudad Jardin        -22.22740  165.05826  -0.135   0.8929  
+neighbourhood_cleansedCruz De Humilladero    8.05401   92.05390   0.087   0.9303  
+neighbourhood_cleansedEste                   7.03860   81.16036   0.087   0.9309  
+neighbourhood_cleansedPalma-Palmilla         7.16200  157.28042   0.046   0.9637  
+neighbourhood_cleansedPuerto de la Torre   -47.22872  177.57897  -0.266   0.7903  
+neighbourhood_cleansedTeatinos-Universidad -29.53536  140.78937  -0.210   0.8338  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for gaussian family taken to be 1016791)
+
+    Null deviance: 7131748536  on 6983  degrees of freedom
+Residual deviance: 7075845851  on 6959  degrees of freedom
+AIC: 116451
+
+Number of Fisher Scoring iterations: 2
+
+# A tibble: 6 × 72
+      id accommodates antiguedad host_response_rate host_response_time neighborhood_overview_flag bathrooms  beds
+   <dbl>        <dbl>      <dbl>              <dbl>              <dbl>                      <dbl>     <dbl> <dbl>
+1  96033            3      15079                  1                  1                          1       1       2
+2 166473            1      15163                  1                  2                          0       2       4
+3 212845            1      15117                  1                  2                          0       1.5     2
+4 330760            2      15372                  1                  1                          1       1.5     1
+5 340024            2      15379                  1                  1                          1       1       1
+6 358541            2      15330                  1                  2                          1       1       1
+# ℹ 64 more variables: price <dbl>, host_is_superhost <dbl>, host_listings_count <dbl>,
+#   host_has_profile_pic <dbl>, host_identity_verified <dbl>, neighbourhood_cleansed <fct>, property_type <fct>,
+#   room_type <fct>, minimum_nights <dbl>, maximum_nights <dbl>, precio_alto <int>, pred_prob <dbl>,
+#   property_type1 <dbl>, property_type2 <dbl>, property_type3 <dbl>, property_type4 <dbl>,
+#   property_type5 <dbl>, property_type6 <dbl>, property_type7 <dbl>, property_type8 <dbl>,
+#   property_type9 <dbl>, property_type10 <dbl>, property_type11 <dbl>, property_type12 <dbl>,
+#   property_type13 <dbl>, property_type14 <dbl>, property_type15 <dbl>, property_type16 <dbl>, …

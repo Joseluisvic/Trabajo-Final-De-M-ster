@@ -1,80 +1,82 @@
-                 Generalized Linear Model Regression Results                  
-==============================================================================
-Dep. Variable:            precio_alto   No. Observations:                 6930
-Model:                            GLM   Df Residuals:                     6866
-Model Family:                Binomial   Df Model:                           63
-Link Function:                  logit   Scale:                          1.0000
-Method:                          IRLS   Log-Likelihood:                -3470.4
-Date:                Mon, 05 Aug 2024   Deviance:                       6940.9
-Time:                        07:24:35   Pearson chi2:                 1.51e+04
-No. Iterations:                    24   Pseudo R-squ. (CS):             0.3194
-Covariance Type:            nonrobust                                         
-=====================================================================================================================
-                                                        coef    std err          z      P>|z|      [0.025      0.975]
----------------------------------------------------------------------------------------------------------------------
-Intercept                                            -5.8506      0.803     -7.283      0.000      -7.425      -4.276
-C(property_type)[T.2]                                -3.5569      1.457     -2.442      0.015      -6.412      -0.702
-C(property_type)[T.3]                                -7.2030   8.44e+04  -8.53e-05      1.000   -1.66e+05    1.66e+05
-C(property_type)[T.4]                               -25.8547   4.04e+04     -0.001      0.999   -7.92e+04    7.92e+04
-C(property_type)[T.5]                               -24.9023   2.05e+04     -0.001      0.999   -4.03e+04    4.02e+04
-C(property_type)[T.6]                                -0.8104      0.174     -4.645      0.000      -1.152      -0.468
-C(property_type)[T.7]                                -0.1528      0.145     -1.054      0.292      -0.437       0.131
-C(property_type)[T.8]                                -0.0050      0.182     -0.027      0.978      -0.361       0.351
-C(property_type)[T.9]                                 0.7123      0.158      4.508      0.000       0.403       1.022
-C(property_type)[T.10]                                0.5216      0.488      1.070      0.285      -0.434       1.477
-C(property_type)[T.11]                                0.4918      0.672      0.732      0.464      -0.825       1.809
-C(property_type)[T.12]                                0.7482      0.595      1.259      0.208      -0.417       1.913
-C(property_type)[T.13]                                0.4827      0.868      0.556      0.578      -1.219       2.184
-C(property_type)[T.14]                              -24.6557   3.25e+04     -0.001      0.999   -6.38e+04    6.38e+04
-C(property_type)[T.15]                               -0.0739      1.552     -0.048      0.962      -3.115       2.968
-C(property_type)[T.16]                                1.1467      1.099      1.043      0.297      -1.007       3.301
-C(property_type)[T.17]                              -24.7954   6.41e+04     -0.000      1.000   -1.26e+05    1.26e+05
-C(property_type)[T.19]                               -0.2779      0.725     -0.383      0.702      -1.699       1.143
-C(property_type)[T.20]                              -27.0673   2.16e+05     -0.000      1.000   -4.23e+05    4.23e+05
-C(property_type)[T.21]                                0.4141      0.710      0.584      0.559      -0.977       1.805
-C(property_type)[T.22]                                1.3159      1.257      1.047      0.295      -1.148       3.780
-C(property_type)[T.23]                                0.0649      0.252      0.257      0.797      -0.430       0.559
-C(property_type)[T.24]                              -24.6434   9.56e+04     -0.000      1.000   -1.87e+05    1.87e+05
-C(property_type)[T.25]                                0.4415      1.359      0.325      0.745      -2.223       3.106
-C(property_type)[T.26]                              -24.4337   1.07e+05     -0.000      1.000   -2.09e+05    2.09e+05
-C(property_type)[T.27]                               -5.5664   1.64e+05  -3.38e-05      1.000   -3.22e+05    3.22e+05
-C(property_type)[T.28]                              -24.6416   6.41e+04     -0.000      1.000   -1.26e+05    1.26e+05
-C(property_type)[T.29]                                0.0148      1.825      0.008      0.994      -3.562       3.591
-C(property_type)[T.30]                              -24.8188   5.02e+04     -0.000      1.000   -9.84e+04    9.84e+04
-C(property_type)[T.31]                               -2.6367      1.750     -1.506      0.132      -6.067       0.794
-C(property_type)[T.32]                               -0.2038      1.329     -0.153      0.878      -2.809       2.401
-C(property_type)[T.33]                               -0.3468      1.849     -0.188      0.851      -3.971       3.277
-C(property_type)[T.34]                               -2.2162      1.676     -1.323      0.186      -5.500       1.068
-C(property_type)[T.36]                               -0.3783      0.827     -0.458      0.647      -1.999       1.242
-C(property_type)[T.37]                                0.0002      1.494      0.000      1.000      -2.929       2.929
-C(property_type)[T.38]                              -25.8312   2.16e+05     -0.000      1.000   -4.23e+05    4.23e+05
-C(property_type)[T.39]                              -24.3131   2.16e+05     -0.000      1.000   -4.23e+05    4.23e+05
-C(property_type)[T.40]                               -1.8931      1.598     -1.185      0.236      -5.024       1.238
-C(property_type)[T.41]                                0.1099      1.911      0.057      0.954      -3.636       3.856
-C(property_type)[T.45]                               21.5498   1.25e+05      0.000      1.000   -2.45e+05    2.45e+05
-C(property_type)[T.46]                               -5.9823   8.24e+04  -7.26e-05      1.000   -1.61e+05    1.61e+05
-C(room_type)[T.2]                                    -0.0776      1.420     -0.055      0.956      -2.861       2.705
-C(room_type)[T.3]                                   -18.7518    6.1e+04     -0.000      1.000    -1.2e+05     1.2e+05
-C(neighbourhood_cleansed)[T.Campanillas]              0.4310      0.671      0.642      0.521      -0.885       1.747
-C(neighbourhood_cleansed)[T.Carretera de Cadiz]       0.6300      0.229      2.753      0.006       0.182       1.079
-C(neighbourhood_cleansed)[T.Centro]                   1.4855      0.207      7.183      0.000       1.080       1.891
-C(neighbourhood_cleansed)[T.Churriana]                0.5876      0.376      1.564      0.118      -0.149       1.324
-C(neighbourhood_cleansed)[T.Ciudad Jardin]            0.3841      0.509      0.754      0.451      -0.614       1.382
-C(neighbourhood_cleansed)[T.Cruz De Humilladero]      1.0058      0.255      3.940      0.000       0.506       1.506
-C(neighbourhood_cleansed)[T.Este]                     0.9347      0.225      4.152      0.000       0.494       1.376
-C(neighbourhood_cleansed)[T.Palma-Palmilla]           0.2943      0.596      0.494      0.622      -0.874       1.463
-C(neighbourhood_cleansed)[T.Puerto de la Torre]      -0.8878      0.607     -1.463      0.143      -2.077       0.301
-C(neighbourhood_cleansed)[T.Teatinos-Universidad]    -0.0420      0.378     -0.111      0.912      -0.783       0.699
-accommodates                                          0.3684      0.033     11.124      0.000       0.303       0.433
-antiguedad                                         4.455e-05   2.79e-05      1.595      0.111   -1.02e-05    9.93e-05
-host_response_rate                                    0.4693      0.329      1.426      0.154      -0.176       1.114
-host_response_time                                    0.1876      0.078      2.409      0.016       0.035       0.340
-bathrooms                                             1.0380      0.085     12.196      0.000       0.871       1.205
-beds                                                  0.1372      0.038      3.584      0.000       0.062       0.212
-host_is_superhost                                     0.0216      0.066      0.325      0.745      -0.108       0.151
-host_listings_count                                   0.0010      0.000      3.098      0.002       0.000       0.002
-host_has_profile_pic                                  0.5077      0.250      2.031      0.042       0.018       0.998
-host_identity_verified                               -0.3620      0.240     -1.510      0.131      -0.832       0.108
-minimum_nights                                       -0.0160      0.007     -2.434      0.015      -0.029      -0.003
-maximum_nights                                        0.0002    6.8e-05      3.584      0.000       0.000       0.000
-=====================================================================================================================
+
+Call:
+glm(formula = formula, family = binomial(link = "logit"), data = data_filtered)
+
+Coefficients: (1 not defined because of singularities)
+                                             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                                -5.851e+00  8.033e-01  -7.283 3.27e-13 ***
+accommodates                                3.684e-01  3.312e-02  11.124  < 2e-16 ***
+antiguedad                                  4.455e-05  2.792e-05   1.595 0.110629    
+host_response_rate                          4.693e-01  3.291e-01   1.426 0.153897    
+host_response_time                          1.876e-01  7.788e-02   2.409 0.016001 *  
+bathrooms                                   1.038e+00  8.511e-02  12.196  < 2e-16 ***
+beds                                        1.372e-01  3.827e-02   3.584 0.000338 ***
+host_is_superhost                           2.155e-02  6.628e-02   0.325 0.745059    
+host_listings_count                         1.011e-03  3.264e-04   3.098 0.001950 ** 
+host_has_profile_pic                        5.077e-01  2.500e-01   2.031 0.042233 *  
+host_identity_verified                     -3.620e-01  2.397e-01  -1.510 0.130926    
+property_type2                             -3.557e+00  1.457e+00  -2.442 0.014619 *  
+property_type3                             -1.695e+01  9.170e+02  -0.018 0.985248    
+property_type4                             -1.685e+01  4.488e+02  -0.038 0.970041    
+property_type5                             -1.590e+01  2.283e+02  -0.070 0.944456    
+property_type6                             -8.104e-01  1.745e-01  -4.645 3.40e-06 ***
+property_type7                             -1.528e-01  1.450e-01  -1.054 0.291911    
+property_type8                             -4.951e-03  1.817e-01  -0.027 0.978257    
+property_type9                              7.123e-01  1.580e-01   4.508 6.55e-06 ***
+property_type10                             5.216e-01  4.875e-01   1.070 0.284660    
+property_type11                             4.918e-01  6.721e-01   0.732 0.464352    
+property_type12                             7.482e-01  5.945e-01   1.259 0.208202    
+property_type13                             4.827e-01  8.681e-01   0.556 0.578200    
+property_type14                            -1.566e+01  3.615e+02  -0.043 0.965456    
+property_type15                            -7.389e-02  1.552e+00  -0.048 0.962024    
+property_type16                             1.147e+00  1.099e+00   1.043 0.296797    
+property_type17                            -1.580e+01  7.124e+02  -0.022 0.982311    
+property_type19                            -2.779e-01  7.250e-01  -0.383 0.701539    
+property_type20                            -1.807e+01  2.400e+03  -0.008 0.993993    
+property_type21                             4.141e-01  7.096e-01   0.584 0.559496    
+property_type22                             1.316e+00  1.257e+00   1.047 0.295204    
+property_type23                             6.487e-02  2.522e-01   0.257 0.797060    
+property_type24                            -1.564e+01  1.062e+03  -0.015 0.988251    
+property_type25                             4.415e-01  1.359e+00   0.325 0.745319    
+property_type26                            -1.543e+01  1.185e+03  -0.013 0.989611    
+property_type27                            -1.532e+01  2.400e+03  -0.006 0.994907    
+property_type28                            -1.564e+01  7.119e+02  -0.022 0.982470    
+property_type29                             1.478e-02  1.825e+00   0.008 0.993539    
+property_type30                            -1.582e+01  5.577e+02  -0.028 0.977371    
+property_type31                            -2.637e+00  1.750e+00  -1.506 0.131976    
+property_type32                            -2.038e-01  1.329e+00  -0.153 0.878111    
+property_type33                            -3.468e-01  1.849e+00  -0.188 0.851235    
+property_type34                            -2.216e+00  1.676e+00  -1.323 0.185971    
+property_type36                            -3.783e-01  8.267e-01  -0.458 0.647216    
+property_type37                             1.981e-04  1.494e+00   0.000 0.999894    
+property_type38                            -1.683e+01  2.400e+03  -0.007 0.994403    
+property_type39                            -1.531e+01  2.400e+03  -0.006 0.994908    
+property_type40                            -1.893e+00  1.598e+00  -1.185 0.236055    
+property_type41                             1.099e-01  1.911e+00   0.057 0.954150    
+property_type45                             1.255e+01  1.391e+03   0.009 0.992801    
+property_type46                            -1.573e+01  8.692e+02  -0.018 0.985557    
+room_type2                                 -7.759e-02  1.420e+00  -0.055 0.956423    
+room_type3                                         NA         NA      NA       NA    
+minimum_nights                             -1.604e-02  6.591e-03  -2.434 0.014944 *  
+maximum_nights                              2.436e-04  6.797e-05   3.584 0.000338 ***
+neighbourhood_cleansedCampanillas           4.310e-01  6.712e-01   0.642 0.520827    
+neighbourhood_cleansedCarretera de Cadiz    6.300e-01  2.288e-01   2.753 0.005903 ** 
+neighbourhood_cleansedCentro                1.486e+00  2.068e-01   7.183 6.80e-13 ***
+neighbourhood_cleansedChurriana             5.876e-01  3.757e-01   1.564 0.117812    
+neighbourhood_cleansedCiudad Jardin         3.841e-01  5.092e-01   0.754 0.450746    
+neighbourhood_cleansedCruz De Humilladero   1.006e+00  2.553e-01   3.940 8.13e-05 ***
+neighbourhood_cleansedEste                  9.347e-01  2.251e-01   4.152 3.29e-05 ***
+neighbourhood_cleansedPalma-Palmilla        2.943e-01  5.963e-01   0.494 0.621586    
+neighbourhood_cleansedPuerto de la Torre   -8.878e-01  6.068e-01  -1.463 0.143420    
+neighbourhood_cleansedTeatinos-Universidad -4.196e-02  3.782e-01  -0.111 0.911649    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 9607.0  on 6929  degrees of freedom
+Residual deviance: 6940.9  on 6866  degrees of freedom
+AIC: 7068.9
+
+Number of Fisher Scoring iterations: 15
+

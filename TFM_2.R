@@ -23,6 +23,7 @@ library(pROC)
 library(tidyverse)
 library(caret)
 library(htmlTable)
+library(caret)
 
 datos <- read_csv("listings_Mal.csv")
 datos$barrio <- datos$neighbourhood_cleansed
@@ -158,7 +159,6 @@ datos <- datos %>%
     neighbourhood_cleansed %in% names(neighbourhood_equivalencias) ~ neighbourhood_equivalencias[neighbourhood_cleansed],
     TRUE ~ NA_integer_  # En caso de que haya algún valor que no esté en las equivalencias
   ))
-
 #Creo una nueva columna 'neighborhood_overview_flag'; Devuelve 1 si tiene descripción y 0 si no
 datos$neighborhood_overview_flag <- ifelse(!is.na(datos$neighborhood_overview), 1, 0)
 #Genero la columna de antigüedad en la plataforma, basándome en el tiempo que lleva
@@ -595,87 +595,93 @@ ggplot(data_filtered, aes(x = neighbourhood_cleansed, y = price)) +
     plot.title = element_text(hjust = 0.5),
     axis.text.x = element_text(angle = 45, hjust = 1)  # Rotar las etiquetas del eje x
   )
+
+#Elimino los outliers; Considero solo las variables que puede ver un cliente en el anuncio
+remove_outliers <- function(data, variables) {
+  data_clean <- data
+  
+  for (var in variables) {
+    if (is.numeric(data[[var]])) {
+      Q1 <- quantile(data[[var]], 0.25, na.rm = TRUE)
+      Q3 <- quantile(data[[var]], 0.75, na.rm = TRUE)
+      IQR <- Q3 - Q1
+      upper_threshold <- Q3 + 1.5 * IQR
+      
+      # Filtrar los datos para eliminar outliers
+      data_clean <- data_clean %>% filter(data_clean[[var]] <= upper_threshold)
+    }
+  }
+  
+  return(data_clean)
+}
+
+# Especificar las variables a considerar
+variables <- c("price", "accommodates", "host_response_rate", 
+               "bathrooms", "beds", "minimum_nights", 
+               "maximum_nights", "neighbourhood_cleansed")
+
+# Aplicar la función al conjunto de datos
+data_limpio <- remove_outliers(data, variables)
+
+# Verificar el tamaño del conjunto de datos original y el limpiado
+cat("Tamaño original:", nrow(data), "filas\n")
+cat("Tamaño después de eliminar outliers:", nrow(data_limpio), "filas\n")
+
 # Ahora pasaré a hacer un análisis de segmentación del mercado. 
 #Calculo un modelo de regresión en base al precio y lo hago con las variables significativas
-formula_reg <- price ~ accommodates + antiguedad + host_response_rate + host_response_time + 
-  bathrooms + beds + host_is_superhost + host_listings_count + 
+#Se seleccionan las variables que ven los clientes a la hora de buscar alojamiento
+#accomodates, bathrooms, beds, host_response_rate, host_is_superhost, host_has_profile_pic, host_identity_verified
+#property_type, room_type, minimum_nights, neighbourhood_cleansed
+#ESTO SE HACE CON LOS DATOS SIN OUTLIERS
+formula <- price ~ accommodates + host_response_rate + 
+  bathrooms + beds + host_is_superhost + 
   host_has_profile_pic + host_identity_verified + 
   property_type + room_type + minimum_nights + maximum_nights + 
   neighbourhood_cleansed
 
-modelo_reg <- glm(formula_reg, data = data)
+modelo_reg <- lm(formula, data = data_limpio)
 sink('Regresion_model_summary.txt')
 print(summary(modelo_reg))
 sink()
 
-# Crear variable binaria de precio alto
-data_filtered <- data_filtered %>%
-  mutate(precio_alto = as.integer(price > median(price, na.rm = TRUE)))
-
-# Convertir variables categóricas a tipo 'factor'
-data_filtered$property_type <- as.factor(data_filtered$property_type)
-data_filtered$room_type <- as.factor(data_filtered$room_type)
-data_filtered$neighbourhood_cleansed <- as.factor(data_filtered$neighbourhood_cleansed)
-
-# Fórmula del modelo
-formula <- precio_alto ~ accommodates + antiguedad + host_response_rate + host_response_time + 
-  bathrooms + beds + host_is_superhost + host_listings_count + 
-  host_has_profile_pic + host_identity_verified + 
-  property_type + room_type + minimum_nights + maximum_nights + 
-  neighbourhood_cleansed
-
-# Modelo Logit
-modelo_logit <- glm(formula, data = data_filtered, family = binomial(link = "logit"))
-
-# Mostrar el resumen del modelo logit
-summary(modelo_logit)
-
-# Guardar el resumen del modelo en un archivo de texto
-sink('logit_model_summary.txt')
-print(summary(modelo_logit))
-sink()
-
-# Calcular las probabilidades predichas
-data_filtered$pred_prob <- predict(modelo_logit, type = "response")
-
-# Obtener las verdaderas etiquetas y las probabilidades predichas
-y_true <- data_filtered$precio_alto
-y_pred_prob <- data_filtered$pred_prob
-
-# Calcular la curva ROC y el área bajo la curva ROC
-roc_obj <- roc(y_true, y_pred_prob)
-roc_auc <- auc(roc_obj)
-
-# Graficar la curva ROC
-ggplot(data = data.frame(fpr = roc_obj$specificities, tpr = roc_obj$sensitivities), aes(x = 1 - fpr, y = tpr)) +
-  geom_line(color = "blue", size = 1.2) +
-  geom_abline(linetype = "dashed", color = "gray") +
-  ggtitle(paste("Receiver Operating Characteristic (ROC)", "\nArea under curve (AUC) =", round(roc_auc, 2))) +
-  xlab("False Positive Rate") +
-  ylab("True Positive Rate") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5))
-
-
-# Añadir predicción al DataFrame
-data_filtered$pred_prob <- predict(modelo_logit, type = "response")
-
-#CON LAS VARIABLES SIGNIFICATIVAS DEVUELTAS DEL MODELO LOGIT CALCULADO SE DIVIDE EN CLUSTERS PARA VER
-#COMO SE ORGANIZAN EN BASE A PRECIO ALTO O NO
+#SE HACE EL CLUSTERING CON LAS VARIABLES del modelo de regresión hecho
 
 # Seleccionar las variables significativas
-significant_vars <- c('accommodates', 'host_response_time', 'bathrooms', 'beds', 'host_listings_count',
-                      'host_has_profile_pic', 'minimum_nights', 'maximum_nights')
+significant_vars <- c('accommodates', 'host_response_time', 'bathrooms', 'beds', 'host_is_superhost',
+                      'property_type', 'room_type', 'maximum_nights', 'minimum_nights', "neighbourhood_cleansed")
 
-# Crear variables dummy para 'property_type' y 'neighbourhood_cleansed'
-data_filtered <- data_filtered %>%
-  mutate(across(c(property_type, neighbourhood_cleansed), as.factor)) %>%
-  model.matrix(~property_type + neighbourhood_cleansed - 1, data = .) %>%
-  as.data.frame() %>%
-  bind_cols(data_filtered, .)
+neighbourhood_equivalencias <- c(
+  "Este" = 1,
+  "Centro" = 2,
+  "Churriana" = 3,
+  "Carretera de Cadiz" = 4,
+  "Bailen-Miraflores" = 5,
+  "Cruz De Humilladero" = 6,
+  "Teatinos-Universidad" = 7,
+  "Puerto de la Torre" = 8,
+  "Ciudad Jardin" = 9,
+  "Campanillas" = 10,
+  "Palma-Palmilla" = 11
+)
+
+# Realizar la conversión usando mutate() y case_when()
+data_limpio <- data_limpio %>%
+  mutate(neighbourhood_cleansed = case_when(
+    neighbourhood_cleansed %in% names(neighbourhood_equivalencias) ~ neighbourhood_equivalencias[neighbourhood_cleansed],
+    TRUE ~ NA_integer_  # En caso de que haya algún valor que no esté en las equivalencias
+  ))
+
+# Crear variables dummy para 'property_type' y 'room_type'
+data_filtered_dummies <- data_limpio %>%
+  mutate(across(c(property_type, room_type), as.factor)) %>%
+  model.matrix(~property_type + room_type - 1, data = .) %>%
+  as.data.frame()
+
+# Añadir la columna 'price' a la lista de variables significativas
+significant_vars <- c(names(data_filtered_dummies)[grep("property_type_|room_type_", names(data_filtered_dummies))], "price")
 
 # Añadir las dummies significativas a la lista de variables
-dummy_vars <- grep("property_type_|neighbourhood_cleansed_", names(data_filtered), value = TRUE)
+dummy_vars <- grep("property_type_|room_type_", names(data_filtered), value = TRUE)
 significant_vars <- c(significant_vars, dummy_vars)
 
 # Selección de columnas con subset y eliminación de filas con NA
@@ -686,41 +692,6 @@ datos_segmentacion <- na.omit(datos_segmentacion)
 scaler <- preProcess(datos_segmentacion, method = c("center", "scale"))
 datos_normalizados <- predict(scaler, datos_segmentacion)
 
-ggplot(pca_df, aes(x = PC1, y = PC2, color = PC1)) +
-  geom_point() +
-  labs(title = "Gráfico de las dos primeras componentes principales",
-       x = "Componente Principal 1",
-       y = "Componente Principal 2") +
-  theme_minimal() +
-  scale_color_gradient(low = "blue", high = "red")  # Cambia los colores según tu preferencia
-
-
-# Convertir las componentes principales a un data frame
-pca_df <- as.data.frame(pca_resultado)
-
-# Graficar las dos primeras componentes principales
-ggplot(pca_df, aes(x = PC1, y = PC2, color = grupo)) +
-  geom_point() +
-  labs(title = "Gráfico de las dos primeras componentes principales",
-       x = "Componente Principal 1",
-       y = "Componente Principal 2") +
-  theme_minimal()
-# Gráfica de Varianza Explicada Acumulada (Scree Plot)
-# Esta gráfica muestra la proporción de la varianza total explicada por cada componente principal. 
-# En el eje X se representan los componentes principales, y en el eje Y, la varianza explicada acumulada.
-varianza_explicada <- pca$sdev^2 / sum(pca$sdev^2)
-varianza_explicada_acumulada <- cumsum(varianza_explicada)
-screeplot(pca, type = "lines", main = "Scree Plot")
-
-# Calcular la varianza explicada acumulada
-varianza_explicada_acumulada <- cumsum(pca$sdev^2 / sum(pca$sdev^2))
-
-# Visualizar la varianza explicada acumulada con puntos rojos y línea verde
-plot(varianza_explicada_acumulada, type = "b", pch = 19, xlab = "Número de Componentes", 
-     ylab = "Varianza Explicada Acumulada", main = "Scree Plot", 
-     col = "red")  # Color de los puntos
-lines(varianza_explicada_acumulada, col = "green")  # Color de la línea
-grid()
 
 # Gráfica del Método del Codo
 # Esta gráfica ayuda a determinar el número óptimo de clusters (grupos) para un algoritmo de clustering (K-means en este caso).
@@ -774,265 +745,99 @@ ggplot(pca_df, aes(x = PCA1, y = PCA2, color = cluster)) +
   theme(plot.title = element_text(hjust = 0.5)) +
   scale_color_viridis_d()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#que pueden considerarse, 5 cluster y 11. En este caso se van a construir 5.
-set.seed(123)
-k <- 5
-
-cluster_k <-KMeans_rcpp (zdata,
-                         clusters = k,
-                         num_init = 10,
-                         max_iters = 100,
-                         initializer = "kmeans++")
-
-whatcluster_k <-as.factor(cluster_k$clusters)
-levels(whatcluster_k)
-data <-cbind(data, whatcluster_k)
-summary(data)
-
-tablamedias <- data %>%
-  group_by(whatcluster_k) %>%
-  summarise( obs = length(whatcluster_k),
-    accommodates = round(mean(accommodates, na.rm = TRUE), 2),
-    antiguedad = round(mean(antiguedad, na.rm = TRUE), 2),
-    host_response_rate = round(mean(host_response_rate, na.rm = TRUE), 2),
-    host_response_time = round(mean(host_response_time, na.rm = TRUE), 2),
-    neighborhood_overview_flag = round(mean(neighborhood_overview_flag, na.rm = TRUE), 2),
-    bathrooms = round(mean(bathrooms, na.rm = TRUE), 2),
-    beds = round(mean(beds, na.rm = TRUE), 2),
-    price = round(mean(price, na.rm = TRUE), 2),
-    host_is_superhost = round(mean(host_is_superhost, na.rm = TRUE), 2),
-    host_listings_count = round(mean(host_listings_count, na.rm = TRUE), 2),
-    host_has_profile_pic = round(mean(host_has_profile_pic, na.rm = TRUE), 2),
-    host_identity_verified = round(mean(host_identity_verified, na.rm = TRUE), 2),
-    neighbourhood_cleansed = round(mean(neighbourhood_cleansed, na.rm = TRUE), 2),
-    property_type = round(mean(property_type, na.rm = TRUE), 2),
-    room_type = round(mean(room_type, na.rm = TRUE), 2),
-    minimum_nights = round(mean(minimum_nights, na.rm = TRUE), 2),
-    maximum_nights = round(mean(maximum_nights, na.rm = TRUE), 2)
-  )
-knitr.table.format = "html"
-
-tablamedias %>%
-  kable(caption = "Método de k-medias. Medias de variables",
-        col.names = c("Clúster", "Observaciones", "Accommodates", "Antiguedad", "Host Response Rate", "Host Response Time", "Neighborhood Overview Flag", "Bathrooms", "Beds", "Price", "Host is Superhost", "Host Listings Count", "Host has Profile Pic", "Host Identity Verified", "Neighbourhood Cleansed", "Property Type", "Room Type", "Minimum Nights", "Maximum Nights")) %>%
-  kable_styling(full_width = F, bootstrap_options = c("striped", "bordered", "condensed"), position = "center", font_size = 12) %>%
-  row_spec(0, bold = TRUE, align = "c") %>%
-  row_spec(1:nrow(tablamedias), bold = FALSE, align = "c")
-
-#Análisis Kruskal-Wallis
-
-KMC_acc <- kruskalmc(data$accommodates ~ data$whatcluster_k)
-print(KMC_acc)
-
-KMC_ant <- kruskalmc(data$antiguedad ~ data$whatcluster_k)
-print(KMC_ant)
-
-KMC_host_res_rate <- kruskalmc(data$host_response_rate ~ data$whatcluster_k)
-print(KMC_host_res_rate)
-
-KMC_host_res_time <- kruskalmc(data$host_response_time ~ data$whatcluster_k)
-print(KMC_host_res_time)
-
-KMC_bath <- kruskalmc(data$bathrooms ~ data$whatcluster_k)
-print(KMC_bath)
-
-KMC_beds <- kruskalmc(data$beds ~ data$whatcluster_k)
-print(KMC_beds)
-
-KMC_price <- kruskalmc(data$price ~ data$whatcluster_k)
-print(KMC_price)
-
-KMC_superhost <- kruskalmc(data$host_is_superhost ~ data$whatcluster_k)
-print(KMC_superhost)
-
-KMC_listings <- kruskalmc(data$host_listings_count ~ data$whatcluster_k)
-print(KMC_listings)
-
-KMC_profile_pic <- kruskalmc(data$host_has_profile_pic ~ data$whatcluster_k)
-print(KMC_profile_pic)
-
-KMC_identity_verified <- kruskalmc(data$host_identity_verified ~ data$whatcluster_k)
-print(KMC_identity_verified)
-
-KMC_neigh_cleansed <- kruskalmc(data$neighbourhood_cleansed ~ data$whatcluster_k)
-print(KMC_neigh_cleansed)
-
-KMC_property_type <- kruskalmc(data$property_type ~ data$whatcluster_k)
-print(KMC_property_type)
-
-KMC_room_type <- kruskalmc(data$room_type ~ data$whatcluster_k)
-print(KMC_room_type)
-
-KMC_minimum_nights <- kruskalmc(data$minimum_nights ~ data$whatcluster_k)
-print(KMC_minimum_nights)
-
-KMC_maximum_nights <- kruskalmc(data$maximum_nights ~ data$whatcluster_k)
-print(KMC_maximum_nights)
-
-KMC_neigh_overview_flag <- kruskalmc(data$neighborhood_overview_flag ~ data$whatcluster_k)
-print(KMC_neigh_overview_flag)
-
-#ANÁLISIS DE LA OFERTA: OFERTA POR LOS DIFERENTES BARRIOS
-# Agrupar datos por barrio y calcular estadísticas descriptivas
-# Vector de equivalencias de los barrios
-neighbourhood_equivalencias <- c(
-  "1" = "Este",
-  "2" = "Centro",
-  "3" = "Churriana",
-  "4" = "Carretera de Cadiz",
-  "5" = "Bailen-Miraflores",
-  "6" = "Cruz De Humilladero",
-  "7" = "Teatinos-Universidad",
-  "8" = "Puerto de la Torre",
-  "9" = "Ciudad Jardin",
-  "10" = "Campanillas",
-  "11" = "Palma-Palmilla"
-)
-
-# Convertir códigos a nombres de barrios
-data <- data %>%
-  mutate(neighbourhood_cleansed = recode(neighbourhood_cleansed, !!!neighbourhood_equivalencias))
-
-#Análisis de precios por barrios
-# Crear boxplot de precios por barrios
-# Filtrar valores no finitos y valores extremadamente altos
-data_filtered <- data %>%
-  filter(is.finite(price) & price < 1000) # Ajustar el umbral según sea necesario
-
-# Crear histograma
-ggplot(data_filtered, aes(x = price)) +
-  geom_histogram(binwidth = 10, fill = "blue", color = "black") +
-  labs(title = "Distribución de Precios de Airbnb", x = "Precio", y = "Frecuencia") +
-  theme_minimal()
-
-# Crear boxplot
-ggplot(data_filtered, aes(y = price)) +
-  geom_boxplot(fill = "blue") +
-  labs(title = "Boxplot de Precios de Airbnb", y = "Precio") +
-  theme_minimal()
-# Crear boxplot de precios por barrios
-ggplot(data_filtered, aes(x = neighbourhood_cleansed, y = price)) +
-  geom_boxplot(fill = "blue") +
-  labs(title = "Distribución de Precios por Barrios", x = "Barrio", y = "Precio") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-# Agrupar datos por barrio y calcular estadísticas descriptivas
-tabla_barrios <- data %>%
-  group_by(neighbourhood_cleansed) %>%
-  summarise(
-    num_properties = n(),
-    accommodates = round(mean(accommodates, na.rm = TRUE), 2),
-    antiguedad = round(mean(antiguedad, na.rm = TRUE), 2),
-    host_response_rate = round(mean(host_response_rate, na.rm = TRUE), 2),
-    host_response_time = round(mean(host_response_time, na.rm = TRUE), 2),
-    neighborhood_overview_flag = round(mean(neighborhood_overview_flag, na.rm = TRUE), 2),
-    bathrooms = round(mean(bathrooms, na.rm = TRUE), 2),
-    beds = round(mean(beds, na.rm = TRUE), 2),
-    price = round(mean(price, na.rm = TRUE), 2),
-    host_is_superhost = round(mean(host_is_superhost, na.rm = TRUE), 2),
-    host_listings_count = round(mean(host_listings_count, na.rm = TRUE), 2),
-    host_has_profile_pic = round(mean(host_has_profile_pic, na.rm = TRUE), 2),
-    host_identity_verified = round(mean(host_identity_verified, na.rm = TRUE), 2),
-    property_type = round(mean(property_type, na.rm = TRUE), 2),
-    room_type = round(mean(room_type, na.rm = TRUE), 2),
-    minimum_nights = round(mean(minimum_nights, na.rm = TRUE), 2),
-    maximum_nights = round(mean(maximum_nights, na.rm = TRUE), 2)
-  )
-
-# Mostrar tabla con formato
-tabla_barrios %>%
-  kable(caption = "Estadísticas descriptivas por barrio",
-        col.names = c("Barrio", "Num. Propiedades", "Accommodates", "Antigüedad", "Host Response Rate", "Host Response Time", "Neighborhood Overview Flag", "Bathrooms", "Beds", "Price", "Host is Superhost", "Host Listings Count", "Host has Profile Pic", "Host Identity Verified", "Property Type", "Room Type", "Minimum Nights", "Maximum Nights")) %>%
-  kable_styling(full_width = F, bootstrap_options = c("striped", "bordered", "condensed"), position = "center", font_size = 12) %>%
-  row_spec(0, bold = TRUE, align = "c") %>%
-  row_spec(1:nrow(tabla_barrios), bold = FALSE, align = "c")
-
-#Histograma por barrios
-ggplot(data_filtered, aes(x = price, fill = factor(neighbourhood_cleansed))) +
-  geom_histogram(binwidth = 10, position = "dodge") +
-  labs(title = "Distribución del Precio por Barrio",
-       x = "Precio",
-       y = "Número de Propiedades",
-       fill = "Barrio") +
-  theme_minimal() +
-  scale_fill_discrete(name = "Barrio") + 
-  ylim(0, 200)
-
-#BoxPlot precio por barrios
-ggplot(data_filtered, aes(x = factor(neighbourhood_cleansed), y = price)) +
-  geom_boxplot( fill = "red") +
-  labs(title = "Boxplot del Precio por Barrio",
-       x = "Barrio",
-       y = "Precio") +
-  theme_minimal() +
-  scale_x_discrete(name = "Barrio")
-
-# Modelo de regresión para entender los factores que afectan al precio
-modelo_precio <- lm(price ~ accommodates + antiguedad + host_response_rate + host_response_time + bathrooms + beds + host_is_superhost + host_listings_count + host_has_profile_pic + host_identity_verified + property_type + room_type + minimum_nights + maximum_nights + factor(neighbourhood_cleansed), data = data_filtered)
-
-# Resumen del modelo
-summary(modelo_precio)
-
-# Extraer los coeficientes del modelo con sus intervalos de confianza
-coef_modelo <- tidy(modelo_precio, conf.int = TRUE)
-
-# Visualizar los coeficientes del modelo
-ggplot(coef_modelo, aes(x = term, y = estimate)) +
+ggplot(pca_df, aes(x = PCA1, y = PCA2, color = PCA1)) +
   geom_point() +
-  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
-  coord_flip() +  # Girar el gráfico para una mejor visualización
-  labs(title = "Coeficientes del Modelo de Regresión",
-       x = "Variables",
-       y = "Estimaciones de los Coeficientes") +
-  theme_minimal()
-# Predicciones del modelo
-data_filtered$predicted <- predict(modelo_precio, newdata = data_filtered)
-data_filtered$residuals <- residuals(modelo_precio)
+  labs(title = "Gráfico de las dos primeras componentes principales",
+       x = "Componente Principal 1",
+       y = "Componente Principal 2") +
+  theme_minimal() +
+  scale_color_gradient(low = "blue", high = "red")  
 
-# Gráfico de residuos vs valores ajustados
-ggplot(data_filtered, aes(x = predicted, y = residuals)) +
-  geom_point(alpha = 0.5) +
-  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
-  labs(title = "Residuos vs Valores Ajustados",
-       x = "Valores Ajustados",
-       y = "Residuos") +
-  theme_minimal()
-# Gráfico de predicciones vs valores reales
-ggplot(data_filtered, aes(x = price, y = predicted)) +
-  geom_point(alpha = 0.5) +
-  geom_abline(intercept = 0, slope = 1, color = "red", linetype = "dashed") +
-  labs(title = "Predicciones vs Valores Reales",
-       x = "Valores Reales",
-       y = "Predicciones") +
-  theme_minimal()
-# Filtrar solo las variables de los barrios
-coef_barrios <- coef_modelo %>% filter(grepl("neighbourhood_cleansed", term))
+# Gráfica de Varianza Explicada Acumulada (Scree Plot)
+# Esta gráfica muestra la proporción de la varianza total explicada por cada componente principal. 
+# En el eje X se representan los componentes principales, y en el eje Y, la varianza explicada acumulada.
+varianza_explicada <- pca_resultado$sdev^2 / sum(pca_resultado$sdev^2)
+varianza_explicada_acumulada <- cumsum(varianza_explicada)
 
-# Visualizar los coeficientes para cada barrio
-ggplot(coef_barrios, aes(x = term, y = estimate)) +
-  geom_point() +
-  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
-  coord_flip() +  # Girar el gráfico para una mejor visualización
-  labs(title = "Efecto de Cada Barrio en el Precio",
-       x = "Barrio",
-       y = "Estimaciones de los Coeficientes") +
-  theme_minimal()
+# Scree Plot para mostrar la proporción de varianza explicada por cada componente
+screeplot(pca_resultado, type = "lines", main = "Scree Plot")
+
+# Calcular la varianza explicada acumulada
+varianza_explicada_acumulada <- cumsum(pca_resultado$sdev^2 / sum(pca_resultado$sdev^2))
+
+# Visualizar la varianza explicada acumulada con puntos rojos y línea verde
+plot(varianza_explicada_acumulada, type = "b", pch = 19, xlab = "Número de Componentes", 
+     ylab = "Varianza Explicada Acumulada", main = "Scree Plot", 
+     col = "red")  # Color de los puntos
+lines(varianza_explicada_acumulada, col = "green")  # Color de la línea
+grid()
+
+#MODELO LOGIT
+#COMO LOS DATOS YA SE HAN LIMPIADO Y CONVERTIDO LAS VARIABLES A CATEGÓRICAS, UTILIZO ESOS DATOS, QUE SON 
+#datos_segmentación
+
+# Crear variable binaria de precio alto
+data_filtered <- data_limpio %>%
+  mutate(precio_alto = as.integer(price > 1.5*median(price, na.rm = TRUE)))
+
+formula_l <- precio_alto ~ accommodates + host_response_rate + 
+  bathrooms + beds + host_is_superhost + 
+  host_has_profile_pic + host_identity_verified + 
+  property_type + room_type + minimum_nights + maximum_nights + 
+  neighbourhood_cleansed
+
+# Modelo Logit
+modelo_logit <- glm(formula_l, data = data_filtered, family = binomial(link = "logit"))
+
+# Mostrar el resumen del modelo logit
+summary(modelo_logit)
+
+# Guardar el resumen del modelo en un archivo de texto
+sink('logit_model_summary.txt')
+print(summary(modelo_logit))
+sink()
+
+# Calcular las probabilidades predichas
+data_filtered$pred_prob <- predict(modelo_logit, type = "response")
+
+# Obtener las verdaderas etiquetas y las probabilidades predichas
+y_true <- data_filtered$precio_alto
+y_pred_prob <- data_filtered$pred_prob
+
+# Calcular la curva ROC y el área bajo la curva ROC
+roc_obj <- roc(y_true, y_pred_prob)
+roc_auc <- auc(roc_obj)
+
+# Graficar la curva ROC
+ggplot(data = data.frame(fpr = roc_obj$specificities, tpr = roc_obj$sensitivities), aes(x = 1 - fpr, y = tpr)) +
+  geom_line(color = "blue", size = 1.2) +
+  geom_abline(linetype = "dashed", color = "gray") +
+  ggtitle(paste("Receiver Operating Characteristic (ROC)", "\nArea under curve (AUC) =", round(roc_auc, 2))) +
+  xlab("False Positive Rate") +
+  ylab("True Positive Rate") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+# Añadir predicción al DataFrame
+data_filtered$pred_prob <- predict(modelo_logit, type = "response")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

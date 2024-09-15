@@ -24,6 +24,8 @@ library(tidyverse)
 library(caret)
 library(htmlTable)
 library(caret)
+library(flextable)
+library(officer)
 
 datos <- read_csv("listings_Mal.csv")
 datos$barrio <- datos$neighbourhood_cleansed
@@ -247,9 +249,25 @@ plot_burbujas <- ggplot(df, aes(x = reorder(barrio, frecuencia), y = frecuencia,
        fill = "Frecuencia")
 print(plot_burbujas)
 
-kable(df, format = "html", table.attr = "class='table table-bordered'") %>%
-  kable_styling(full_width = FALSE, position = "left")
+# Crear la tabla usando flextable
+tabla <- flextable(df)
+tabla <- bold(tabla, part = "header", bold = TRUE)
 
+# Ajusta la tabla a un ancho específico
+tabla <- set_table_properties(tabla, width = 1, layout = "autofit")
+
+# O puedes ajustar el ancho de las columnas manualmente
+# Por ejemplo, para una tabla con 3 columnas, podrías hacer:
+tabla <- width(tabla, j = 1, width = 2)  # Ajustar ancho de la columna 1
+tabla <- width(tabla, j = 2, width = 2)  # Ajustar ancho de la columna 2
+
+# Crear el documento de Word y añadir la tabla
+doc <- read_docx() %>%
+  body_add_flextable(tabla) %>%
+  body_add_par(" ")  # Para añadir un espacio después de la tabla
+
+# Guardar el documento como un archivo de Word
+print(doc, target = "tabla.docx")
 
 # ANÁLISIS DE LA DEMANDA
 # Vector de equivalencias de los barrios
@@ -296,7 +314,7 @@ ggplot(data_filtered, aes(y = price)) +
 # Crear boxplot de precios por barrios
 ggplot(data_filtered, aes(x = neighbourhood_cleansed, y = price)) +
   geom_boxplot(fill = "blue", color = "black") +
-  ggtitle('Distribución de Precios por Barrios') +
+  ggtitle('Boxplot de Precios por Barrios') +
   xlab('Barrio') +
   ylab('Precio') +
   theme_minimal() +
@@ -584,18 +602,6 @@ ggplot(filtered_data, aes(x = price, fill = neighbourhood_cleansed)) +
   ) +
   ylim(0, max(table(filtered_data$neighbourhood_cleansed)) * 1.1)  # Ajustar el límite del eje y
 
-# Crear el boxplot del precio por barrio
-ggplot(data_filtered, aes(x = neighbourhood_cleansed, y = price)) +
-  geom_boxplot(fill = "aquamarine2", color = "black") +
-  ggtitle('Boxplot del Precio por Barrio') +
-  xlab('Barrio') +
-  ylab('Precio') +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(hjust = 0.5),
-    axis.text.x = element_text(angle = 45, hjust = 1)  # Rotar las etiquetas del eje x
-  )
-
 #Elimino los outliers; Considero solo las variables que puede ver un cliente en el anuncio
 remove_outliers <- function(data, variables) {
   data_clean <- data
@@ -625,7 +631,14 @@ data_limpio <- remove_outliers(data, variables)
 
 # Verificar el tamaño del conjunto de datos original y el limpiado
 cat("Tamaño original:", nrow(data), "filas\n")
-cat("Tamaño después de eliminar outliers:", nrow(data_limpio), "filas\n")
+cat("Tamaño después de eliminar outliers:", nrow(data_no_outl), "filas\n")
+
+#UNA VEZ LIMPIOS LOS DATOS DE OUTLIERS, SE DIVIDEN LOS DATOS EN CONJUNTO DE PRUEBA Y EN CONJUNTO DE TEST
+set.seed(1)
+indice_entre <- sample(seq_len(nrow(data_limpio)), size = floor(0.8 * nrow(data_limpio)))
+
+data_train <- data_limpio[indice_entre, ]
+data_test <- data_limpio[-indice_entre, ]
 
 # Ahora pasaré a hacer un análisis de segmentación del mercado. 
 #Calculo un modelo de regresión en base al precio y lo hago con las variables significativas
@@ -639,9 +652,35 @@ formula <- price ~ accommodates + host_response_rate +
   property_type + room_type + minimum_nights + maximum_nights + 
   neighbourhood_cleansed
 
-modelo_reg <- lm(formula, data = data_limpio)
+modelo_reg <- lm(formula, data = data_train)
 sink('Regresion_model_summary.txt')
 print(summary(modelo_reg))
+sink()
+
+#SE COMPARA CON TEST
+# Predecir los valores de price usando el modelo y data_test
+predicciones <- predict(modelo_reg, newdata = data_test)
+
+# Comparar las predicciones con los valores reales de price
+valores_reales <- data_test$price
+
+# Calcular métricas de evaluación
+MAE <- mean(abs(predicciones - valores_reales))
+RMSE <- sqrt(mean((predicciones - valores_reales)^2))
+R2 <- 1 - sum((predicciones - valores_reales)^2) / sum((valores_reales - mean(valores_reales))^2)
+
+# Guardar el resumen del modelo y las métricas de evaluación en un archivo de texto
+sink('Regresion_model_summary_performance.txt')
+
+# Imprimir el resumen del modelo
+print(summary(modelo_reg))
+
+# Imprimir las métricas de evaluación
+cat("\nMean Absolute Error (MAE):", MAE, "\n")
+cat("Root Mean Squared Error (RMSE):", RMSE, "\n")
+cat("R-squared (R²):", R2, "\n")
+
+# Cerrar el sink
 sink()
 
 #SE HACE EL CLUSTERING CON LAS VARIABLES del modelo de regresión hecho
@@ -774,11 +813,18 @@ grid()
 
 #MODELO LOGIT
 #COMO LOS DATOS YA SE HAN LIMPIADO Y CONVERTIDO LAS VARIABLES A CATEGÓRICAS, UTILIZO ESOS DATOS, QUE SON 
-#datos_segmentación
+#datos_segmentación; VUELVO A HACER LA DIVISIÓN ENTRE DATOS DE TEST Y DE ENTRENAMIENTO.
 
 # Crear variable binaria de precio alto
 data_filtered <- data_limpio %>%
   mutate(precio_alto = as.integer(price > 1.5*median(price, na.rm = TRUE)))
+
+#HAGO LA DIVISIÓN ENTRE DATOS DE ENTRENAMIENTO Y DATOS DE TEST
+set.seed(2)
+indice_entre <- sample(seq_len(nrow(data_filtered)), size = floor(0.8 * nrow(data_filtered)))
+
+data_train <- data_filtered[indice_entre, ]
+data_test <- data_filtered[-indice_entre, ]
 
 formula_l <- precio_alto ~ accommodates + host_response_rate + 
   bathrooms + beds + host_is_superhost + 
@@ -787,7 +833,7 @@ formula_l <- precio_alto ~ accommodates + host_response_rate +
   neighbourhood_cleansed
 
 # Modelo Logit
-modelo_logit <- glm(formula_l, data = data_filtered, family = binomial(link = "logit"))
+modelo_logit <- glm(formula_l, data = data_train, family = binomial(link = "logit"))
 
 # Mostrar el resumen del modelo logit
 summary(modelo_logit)
@@ -797,30 +843,78 @@ sink('logit_model_summary.txt')
 print(summary(modelo_logit))
 sink()
 
-# Calcular las probabilidades predichas
-data_filtered$pred_prob <- predict(modelo_logit, type = "response")
+# Calcular las probabilidades predichas para el conjunto de prueba
+data_test$pred_prob <- predict(modelo_logit, newdata = data_test, type = "response")
 
-# Obtener las verdaderas etiquetas y las probabilidades predichas
-y_true <- data_filtered$precio_alto
-y_pred_prob <- data_filtered$pred_prob
+# Convertir las probabilidades a clases predichas usando un umbral de 0.5
+data_test$pred_class <- ifelse(data_test$pred_prob > 0.5, 1, 0)
+
+# Crear una tabla de confusión para el conjunto de prueba
+table_test <- table(Predicted = data_test$pred_class, Actual = data_test$precio_alto)
+
+# Calcular métricas de rendimiento para el conjunto de prueba
+accuracy_test <- sum(diag(table_test)) / sum(table_test)
+sensitivity_test <- table_test[2, 2] / sum(table_test[, 2])
+specificity_test <- table_test[1, 1] / sum(table_test[, 1])
+
+# Calcular las probabilidades predichas para el conjunto de entrenamiento
+data_train$pred_prob <- predict(modelo_logit, newdata = data_train, type = "response")
+
+# Convertir las probabilidades a clases predichas usando un umbral de 0.5
+data_train$pred_class <- ifelse(data_train$pred_prob > 0.5, 1, 0)
+
+# Crear una tabla de confusión para el conjunto de entrenamiento
+table_train <- table(Predicted = data_train$pred_class, Actual = data_train$precio_alto)
+
+# Calcular métricas de rendimiento para el conjunto de entrenamiento
+accuracy_train <- sum(diag(table_train)) / sum(table_train)
+sensitivity_train <- table_train[2, 2] / sum(table_train[, 2])
+specificity_train <- table_train[1, 1] / sum(table_train[, 1])
+
+# Imprimir y guardar los resultados en un archivo de texto
+sink('logit_model_evaluation.txt')
+cat("Métricas del conjunto de prueba:\n")
+cat("Exactitud:", accuracy_test, "\n")
+cat("Sensibilidad:", sensitivity_test, "\n")
+cat("Especificidad:", specificity_test, "\n\n")
+
+cat("Métricas del conjunto de entrenamiento:\n")
+cat("Exactitud:", accuracy_train, "\n")
+cat("Sensibilidad:", sensitivity_train, "\n")
+cat("Especificidad:", specificity_train, "\n\n")
+
+cat("Tabla de confusión del conjunto de prueba:\n")
+print(table_test)
+
+cat("\nTabla de confusión del conjunto de entrenamiento:\n")
+print(table_train)
+sink()
+
+# Obtener las verdaderas etiquetas y las probabilidades predichas del conjunto de prueba
+y_true <- data_test$precio_alto
+y_pred_prob <- data_test$pred_prob
 
 # Calcular la curva ROC y el área bajo la curva ROC
 roc_obj <- roc(y_true, y_pred_prob)
 roc_auc <- auc(roc_obj)
 
 # Graficar la curva ROC
-ggplot(data = data.frame(fpr = roc_obj$specificities, tpr = roc_obj$sensitivities), aes(x = 1 - fpr, y = tpr)) +
-  geom_line(color = "blue", size = 1.2) +
-  geom_abline(linetype = "dashed", color = "gray") +
+roc_data <- data.frame(fpr = rev(roc_obj$specificities), tpr = rev(roc_obj$sensitivities))
+
+ggplot(data = roc_data, aes(x = 1 - fpr)) +
+  # Sombrear el área entre la curva ROC y la línea diagonal
+  geom_ribbon(aes(ymin = 1 - fpr, ymax = tpr), fill = "darkolivegreen1", alpha = 0.2) +
+  # Dibujar la curva ROC
+  geom_line(aes(y = tpr), color = "red", size = 1.2) +
+  # Dibujar la recta de 45 grados
+  geom_abline(linetype = "dashed", color = "black") +
+  # Título y etiquetas
   ggtitle(paste("Receiver Operating Characteristic (ROC)", "\nArea under curve (AUC) =", round(roc_auc, 2))) +
   xlab("False Positive Rate") +
   ylab("True Positive Rate") +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5))
 
-
-# Añadir predicción al DataFrame
-data_filtered$pred_prob <- predict(modelo_logit, type = "response")
 
 
 

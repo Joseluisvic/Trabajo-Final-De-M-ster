@@ -15,7 +15,6 @@ library(gridExtra)
 library(patchwork)
 library(PerformanceAnalytics)
 library(pgirmess)
-library(tree)
 library(ISLR2)
 library(broom)
 library(viridis)
@@ -26,6 +25,8 @@ library(htmlTable)
 library(caret)
 library(flextable)
 library(officer)
+library(cluster)
+library(factoextra)
 
 datos <- read_csv("listings_Mal.csv")
 datos$barrio <- datos$neighbourhood_cleansed
@@ -690,7 +691,7 @@ sink()
 
 # Seleccionar las variables significativas
 significant_vars <- c('accommodates', 'host_response_time', 'bathrooms', 'beds', 'host_is_superhost',
-                      'property_type', 'room_type', 'maximum_nights', 'minimum_nights', "neighbourhood_cleansed")
+                      'property_type', 'room_type', 'maximum_nights', 'minimum_nights', "neighbourhood_cleansed", "price")
 
 neighbourhood_equivalencias <- c(
   "Este" = 1,
@@ -708,10 +709,7 @@ neighbourhood_equivalencias <- c(
 
 # Realizar la conversión usando mutate() y case_when()
 data_limpio <- data_limpio %>%
-  mutate(neighbourhood_cleansed = case_when(
-    neighbourhood_cleansed %in% names(neighbourhood_equivalencias) ~ neighbourhood_equivalencias[neighbourhood_cleansed],
-    TRUE ~ NA_integer_  # En caso de que haya algún valor que no esté en las equivalencias
-  ))
+  mutate(neighbourhood_cleansed = recode(neighbourhood_cleansed, !!!neighbourhood_equivalencias))
 
 # Crear variables dummy para 'property_type' y 'room_type'
 data_filtered_dummies <- data_limpio %>%
@@ -719,42 +717,56 @@ data_filtered_dummies <- data_limpio %>%
   model.matrix(~property_type + room_type - 1, data = .) %>%
   as.data.frame()
 
-# Añadir la columna 'price' a la lista de variables significativas
-significant_vars <- c(names(data_filtered_dummies)[grep("property_type_|room_type_", names(data_filtered_dummies))], "price")
-
 # Añadir las dummies significativas a la lista de variables
-dummy_vars <- grep("property_type_|room_type_", names(data_filtered), value = TRUE)
+dummy_vars <- grep("property_type_|room_type_", names(data_limpio), value = TRUE)
 significant_vars <- c(significant_vars, dummy_vars)
 
 # Selección de columnas con subset y eliminación de filas con NA
-datos_segmentacion <- subset(data_filtered, select = c("price", significant_vars))
+datos_segmentacion <- subset(data_limpio, select = significant_vars)
 datos_segmentacion <- na.omit(datos_segmentacion)
+
+# Verificación de valores NA en datos_segmentacion
+print("Número de valores NA en datos_segmentacion:")
+print(sum(is.na(datos_segmentacion)))
 
 # Normalización de las variables
 scaler <- preProcess(datos_segmentacion, method = c("center", "scale"))
 datos_normalizados <- predict(scaler, datos_segmentacion)
 
+# Verificación del tipo de datos_normalizados
+print("Tipo de datos_normalizados:")
+print(class(datos_normalizados))
 
-# Gráfica del Método del Codo
-# Esta gráfica ayuda a determinar el número óptimo de clusters (grupos) para un algoritmo de clustering (K-means en este caso).
-# En el eje X se representan los diferentes números de clusters, y en el eje Y, la suma de las distancias cuadradas dentro de los clusters (Within-Cluster Sum of Squares, WSS).
-# Decreciente: La línea decreciente muestra que a medida que se aumenta el número de clusters, la WSS disminuye.
-# El "codo" de la gráfica es el punto donde la tasa de disminución se hace menos pronunciada.
-# Este punto indica el número óptimo de clusters, ya que más clusters no aportan una mejora significativa en la compactación de los grupos.
+# Convertir a data frame si es necesario (no es necesario ya que es tibble)
+datos_normalizados <- as.data.frame(datos_normalizados)
 
-# Determinar el número óptimo de clusters utilizando el método del codo
-wss <- numeric(15)
-for (i in 1:15) {
-  kmeans_result <- kmeans(datos_normalizados, centers = i, nstart = 25)
-  wss[i] <- kmeans_result$tot.withinss
-}
+# Verificación de valores NA y Inf en datos_normalizados usando dplyr
+print("Número de valores NA en datos_normalizados:")
+print(sum(is.na(datos_normalizados)))
 
-# Graficar el Método del Codo
-plot(1:15, wss, type = "b", pch = 19, frame = FALSE,
-     xlab = "Número de Clusters", ylab = "Within groups sum of squares",
-     main = "Método del Codo")
-grid()
+print("Número de valores Inf en datos_normalizados:")
+print(sum(sapply(datos_normalizados, function(x) sum(is.infinite(x)))))
 
+# Limpiar valores infinitos si existen
+datos_normalizados <- datos_normalizados %>%
+  mutate_all(~ifelse(is.infinite(.), NA, .)) %>%
+  na.omit()
+
+# Verificar nuevamente
+print("Número de valores NA después de la limpieza en datos_normalizados:")
+print(sum(is.na(datos_normalizados)))
+print("Número de valores Inf después de la limpieza en datos_normalizados:")
+print(sum(sapply(datos_normalizados, function(x) sum(is.infinite(x)))))
+# Verificar si todos los datos son numéricos
+str(datos_normalizados)
+
+# Método del codo usando fviz_nbclust
+set.seed(123)  # Para obtener resultados reproducibles
+fviz_nbclust(datos_normalizados, kmeans, method = "wss") +
+  geom_vline(xintercept = 4, linetype = 2) +  # Opcional, puedes ajustar según el gráfico
+  labs(subtitle = "Método del codo para determinar el número óptimo de clusters", 
+       x = "Número de clusters", 
+       y = "Suma de cuadrados intra-cluster (WSS)")
 # Realizar K-means clustering con el número óptimo de clusters (e.g., 4 clusters)
 optimal_clusters <- 4
 set.seed(123)
@@ -763,24 +775,52 @@ kmeans_resultado <- kmeans(datos_normalizados, centers = optimal_clusters, nstar
 clusters <- kmeans_resultado$cluster
 
 # Añadir los clusters a los datos originales
-data_filtered$cluster <- as.character(kmeans_resultado$cluster)
+data_limpio$cluster <- as.character(kmeans_resultado$cluster)
 
 # Mostrar las primeras filas del DataFrame con el nuevo cluster
-head(data_filtered)
+head(data_limpio)
 
 # Realizar PCA
 pca_resultado <- prcomp(datos_normalizados, center = TRUE, scale. = TRUE)
 
-# Seleccionar las dos primeras componentes principales
-pca_df <- data.frame(PCA1 = pca_resultado$x[, 1], PCA2 = pca_resultado$x[, 2])
+# Porcentaje de varianza explicado por cada componente principal
+varianza_explicada <- summary(pca_resultado)$importance[2, ]
+porcentaje_varianza_explicada <- varianza_explicada * 100
 
-# Asegurarse de que clusters sea un factor y añadirlo al DataFrame de PCA
+# Cargas de las variables originales en las componentes principales
+cargas <- pca_resultado$rotation
+
+# Seleccionar las dos primeras componentes principales y añadir la información de los clusters
+pca_df <- data.frame(PCA1 = pca_resultado$x[, 1], PCA2 = pca_resultado$x[, 2])
 pca_df$cluster <- factor(clusters)
 
+# Redirigir la salida a un archivo de texto
+sink("resultados_pca.txt")
+
+# Escribir los resultados en el archivo de texto
+cat("Porcentaje de varianza explicado por cada componente principal:\n")
+for (i in 1:length(porcentaje_varianza_explicada)) {
+  cat(sprintf("CP%d: %.2f%%\n", i, porcentaje_varianza_explicada[i]))
+}
+
+cat("\nCargas de las variables originales en las componentes principales:\n")
+for (i in 1:ncol(cargas)) {
+  cat(sprintf("\nCargas para CP%d:\n", i))
+  for (j in 1:nrow(cargas)) {
+    cat(sprintf("%s: %.4f\n", rownames(cargas)[j], cargas[j, i]))
+  }
+}
+
+# Cerrar la redirección de la salida
+sink()
+
+# Mostrar un mensaje indicando que los resultados han sido guardados
+cat("Los resultados han sido guardados en el archivo: resultados_pca.txt\n")
 # Gráfico de dispersión de los datos según las componentes principales
 library(ggplot2)
 ggplot(pca_df, aes(x = PCA1, y = PCA2, color = cluster)) +
   geom_point(alpha = 0.6, size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
   labs(title = "Datos según Componentes Principales",
        x = "Componente Principal 1", y = "Componente Principal 2", color = "Cluster") +
   theme_minimal() +
@@ -789,11 +829,12 @@ ggplot(pca_df, aes(x = PCA1, y = PCA2, color = cluster)) +
 
 ggplot(pca_df, aes(x = PCA1, y = PCA2, color = PCA1)) +
   geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +  # Añadir línea de tendencia
   labs(title = "Gráfico de las dos primeras componentes principales",
        x = "Componente Principal 1",
        y = "Componente Principal 2") +
   theme_minimal() +
-  scale_color_gradient(low = "blue", high = "red")  
+  scale_color_gradient(low = "blue", high = "red")
 
 # Gráfica de Varianza Explicada Acumulada (Scree Plot)
 # Esta gráfica muestra la proporción de la varianza total explicada por cada componente principal. 

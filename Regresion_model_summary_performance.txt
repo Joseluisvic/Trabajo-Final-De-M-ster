@@ -1,0 +1,43 @@
+
+Call:
+lm(formula = formula, data = data_train)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-96.219 -25.371  -5.588  18.359 165.879 
+
+Coefficients:
+                                             Estimate Std. Error t value Pr(>|t|)    
+(Intercept)                                 84.858361   8.431956  10.064  < 2e-16 ***
+accommodates                                 8.428982   0.613818  13.732  < 2e-16 ***
+host_response_rate                          -8.489902   4.339938  -1.956 0.050496 .  
+bathrooms                                   22.966566   1.507984  15.230  < 2e-16 ***
+beds                                         2.241662   0.732291   3.061 0.002217 ** 
+host_is_superhost                            4.124859   1.201438   3.433 0.000601 ***
+host_has_profile_pic                         5.964513   4.432752   1.346 0.178509    
+host_identity_verified                      -4.087940   4.163043  -0.982 0.326169    
+property_type                                0.612420   0.090260   6.785 1.30e-11 ***
+room_type                                  -45.902395   1.968049 -23.324  < 2e-16 ***
+minimum_nights                              -5.068263   0.494107 -10.257  < 2e-16 ***
+maximum_nights                               0.002662   0.001218   2.185 0.028912 *  
+neighbourhood_cleansedCampanillas           15.792626   9.830713   1.606 0.108239    
+neighbourhood_cleansedCarretera de Cadiz     8.360414   3.592567   2.327 0.019999 *  
+neighbourhood_cleansedCentro                23.622185   3.215579   7.346 2.38e-13 ***
+neighbourhood_cleansedChurriana             10.227657   6.040234   1.693 0.090471 .  
+neighbourhood_cleansedCiudad Jardin          0.232186   7.105772   0.033 0.973935    
+neighbourhood_cleansedCruz De Humilladero    9.399863   4.058368   2.316 0.020591 *  
+neighbourhood_cleansedEste                  15.164686   3.619346   4.190 2.84e-05 ***
+neighbourhood_cleansedPalma-Palmilla         3.089663   7.291779   0.424 0.671790    
+neighbourhood_cleansedPuerto de la Torre   -15.079387   8.870133  -1.700 0.089192 .  
+neighbourhood_cleansedTeatinos-Universidad   5.743922   6.818348   0.842 0.399594    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 37.01 on 4836 degrees of freedom
+Multiple R-squared:  0.3946,	Adjusted R-squared:  0.392 
+F-statistic: 150.1 on 21 and 4836 DF,  p-value: < 2.2e-16
+
+
+Mean Absolute Error (MAE): 29.14672 
+Root Mean Squared Error (RMSE): 37.77208 
+R-squared (R²): 0.4100545 

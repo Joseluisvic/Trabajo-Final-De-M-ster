@@ -1,0 +1,21 @@
+Métricas del conjunto de prueba:
+Exactitud: 0.8312757 
+Sensibilidad: 0.2757009 
+Especificidad: 0.95005 
+
+Métricas del conjunto de entrenamiento:
+Exactitud: 0.8272952 
+Sensibilidad: 0.2422566 
+Especificidad: 0.9610521 
+
+Tabla de confusión del conjunto de prueba:
+         Actual
+Predicted   0   1
+        0 951 155
+        1  50  59
+
+Tabla de confusión del conjunto de entrenamiento:
+         Actual
+Predicted    0    1
+        0 3800  685
+        1  154  219
